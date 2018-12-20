@@ -14,7 +14,7 @@ raw_time = datetime.now()
 formatted_time = datetime.strftime(raw_time, format="%Y-%m-%d %H:%M:%S")
 
 # Define path to output directory.
-output_dir = "/home/will/cotton spatial variability vs yield analysis/cotton-spatial-variability-vs-yield/2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/p6"
+output_dir = "/home/will/cotton spatial variability vs yield analysis/2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/p6"
 #output_dir = "/home/will/cotton spatial variability vs yield analysis/cotton-spatial-variability-vs-yield/2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/p7"
 
 # Define input layer.
@@ -65,16 +65,15 @@ def make_samples(layer_list, input_layer_name):
 
         processing.run('gdal:cliprasterbymasklayer', parameters)
 
-
 # Process the eraly sample spaces.
 make_samples(layer_list=layer_list, input_layer_name=input_layer)
 
-# Write a meta-data file with the deatials of this extraction for future referecne.
+# Write a meta-data file with the details of this extraction for future referecne.
 with open(os.path.join(output_dir, "sample_meta_data.txt"), "w") as tester:
     tester.write("""Sample Layer ID: {0}\n
                     Number of Samples: {1}\n
                     Samples Generated On: {2}\n
-                    """.format(input_layer_name, len(layer_list), formatted_time))
+                    """.format(input_layer, len(layer_list), formatted_time))
 
 tester.close()
 
