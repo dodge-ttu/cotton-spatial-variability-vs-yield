@@ -1,24 +1,54 @@
-import processing
 import os
+import sys
 from datetime import datetime
+from qgis.core import QgsProject
+from qgis.core import QgsApplication
+
+
+# Append path to QGIS.
+sys.path.append("/home/will/cotton spatial variability vs yield analysis/cott_spat_interp/lib/python3/dist-packages")
 
 # Get date to tag output.
-
 raw_time = datetime.now()
 formatted_time = datetime.strftime(raw_time, format="%Y-%m-%d %H:%M:%S")
+
+# Initialize
 
 # Output directory and input layer names. In the case of staggared plantinge there will need to be 
 # a series of input files. Rather than taking all sample from one layer we must use several layers
 # because the date of maturity is staggared.
 
-output_dir = "/home/will/Desktop"
-input_layer = "2018-07-18_75_75_20_rainMatrix_odm_orthophoto_modified"
+output_dir = "/home/will/cotton spatial variability vs yield analysis/cotton-spatial-variability-vs-yield/2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/p6"
+#output_dir = "/home/will/cotton spatial variability vs yield analysis/cotton-spatial-variability-vs-yield/2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/p7"
+
+input_layer = "2018-06-21_75_75_20_rainMatrix_odm_orthophoto_modified"
+
+# Create a reference to the QGIS application.
+qgs = QgsApplication([], False)
+
+# load providers
+qgs.initQgis()
+
+# Create a project instance.
+project = QgsProject.instance()
+
+# Load a project.
+project.read('/home/will/MAHAN MAP 2018/MAHAN MAP 2018.qgs')
+
+import processing
+from processing.core.Processing import Processing
+Processing.initialize()
+
+
+# Create bridge between loaded project and canvas
+bridge = project.layerTreeRegistryBridge()
 
 # Return the layer tree and isolate the group of interest to programmatically extract the individual 
 # sample spaces.
-
 my_layer_tree = QgsProject.instance().layerTreeRoot()
 my_group = my_layer_tree.findGroup("spatial_analysis_p6_aoms")
+#my_group = my_layer_tree.findGroup("spatial_analysis_p7_aoms")
+
 
 # Generete a list of items in the group of interest.
 
@@ -43,7 +73,8 @@ def make_samples(layer_list, input_layer_name):
        }
 
         processing.run('gdal:cliprasterbymasklayer', parameters)
-        
+
+
 # Process the eraly sample spaces.
 
 make_samples(layer_list=layer_list, input_layer_name=input_layer)
@@ -51,11 +82,17 @@ make_samples(layer_list=layer_list, input_layer_name=input_layer)
 # Write a meta-data file with the deatials of this extraction for future referecne.
 
 with open(os.path.join(output_dir, "sample_meta_data.txt"), "w") as tester:
-    tester.write("""Sample Layer ID early: {0}\n
-                    Salple Layer ID late: {1}\n
-                    Number of Samples: {2}\n
-                    Samples Generated On: {3}\n
-                    """.format(input_layer_name_earlier, input_layer_name_later, len(layer_list), formatted_time))
+    tester.write("""Sample Layer ID: {0}\n
+                    Number of Samples: {1}\n
+                    Samples Generated On: {2}\n
+                    """.format(input_layer_name, len(layer_list), formatted_time))
 
 tester.close()
+
+# Close project.
+qgs.exitQgis()
+
+
+
+
 
