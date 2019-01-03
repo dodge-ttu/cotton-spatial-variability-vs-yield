@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
     # Define path to output directory.
     output_dir = "/home/will/cotton spatial variability vs yield analysis/" \
-                 "2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/p6"
+                 "2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/"
 
     # Create a reference to the QGIS application.
     qgs = QgsApplication([], False)
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     map_layers = project.mapLayers()
 
     # Details.
-    planting = 'p6'
+    planting = 'p7'
     what = 'points'
 
     a_layer_of_points = [v for k, v in map_layers.items() if planting in k and what in k]

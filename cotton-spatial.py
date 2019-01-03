@@ -2,12 +2,33 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-filepath = "/home/will/MAHAN MAP 2018/spatial_p6_aom01_points_WGS_84.csv"
+def clean_poly_eq(coefficients, dec_dig):
+    n = len(coefficients)
+    degs = [i for i in range(n)]
+    coefficients = [round(i, dec_dig) for i in coefficients]
+    coefficients.reverse()
+    pieces = []
+    for (cof, deg) in zip(coefficients, degs):
+        if deg == 0:
+            a = ' + {0}'.format(cof)
+            pieces.append(a)
+        else:
+            a = '{0} x^{1} '.format(cof, deg)
+            pieces.append(a)
 
-df = pd.read_csv(filepath)
+    equation = 'y = ' + ''.join(pieces[::-1])
 
-x = df.loc[:, "X"].values
-y = df.loc[:, "Y"].values
+    return equation
 
-fig, ax = plt.subplots(1,1, figsize=(10,10))
-ax.plot(x,y, "o")
+
+def get_poly_hat(x_values, y_values, poly_degree):
+    coeffs = np.polyfit(x_values, y_values, poly_degree)
+    poly_eqn = np.poly1d(coeffs)
+
+    y_bar = np.sum(y_values) / len(y_values)
+    ssreg = np.sum((poly_eqn(x_values) - y_bar) ** 2)
+    sstot = np.sum((y_values - y_bar) ** 2)
+    r_square = ssreg / sstot
+
+    return (coeffs, poly_eqn, r_square)
+

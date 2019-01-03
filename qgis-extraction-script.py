@@ -37,10 +37,12 @@ if __name__ == '__main__':
 
     # Define path to output directory.
     an_output_dir = "/home/will/cotton spatial variability vs yield analysis/" \
-        "2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/p6"
+        "2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/"
 
     # Define input layer.
-    input_layer = "2018-06-21_75_75_20_rainMatrix_odm_orthophoto_modified"
+    # input_layer = "2018-11-15_65_75_35_rainMatrix_modified" # yield
+    input_layer = "2018-06-21_75_75_20_rainMatrix_odm_orthophoto_modified" # seedlings
+
 
     # Create a reference to the QGIS application.
     qgs = QgsApplication([], False)
@@ -69,7 +71,7 @@ if __name__ == '__main__':
 
     # Details
     planting = 'p6'
-    what = 'aoms'
+    what = 'seedling-aoms'
 
     # Create an out directory.
     directory_path = os.path.join(an_output_dir, "{0}-{1}-extracted".format(planting, what))
