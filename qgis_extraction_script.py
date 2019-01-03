@@ -3,6 +3,7 @@ import sys
 from datetime import datetime
 from qgis.core import QgsProject
 from qgis.core import QgsApplication
+from qgis.core import QgsVectorFileWriter
 import processing
 from processing.core.Processing import Processing
 
@@ -14,7 +15,7 @@ raw_time = datetime.now()
 formatted_time = datetime.strftime(raw_time, format="%Y-%m-%d %H:%M:%S")
 
 # Define path to output directory.
-output_dir = "/home/will/cotton spatial variability vs yield analysis/2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/p6"
+output_dir = "/home/will/cotton spatial variability vs yield analysis/2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/p7"
 #output_dir = "/home/will/cotton spatial variability vs yield analysis/cotton-spatial-variability-vs-yield/2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/p7"
 
 # Define input layer.
@@ -40,14 +41,24 @@ bridge = project.layerTreeRegistryBridge()
 
 # Return the layer tree and isolate the group of interest to programmatically extract the individual
 my_layer_tree = QgsProject.instance().layerTreeRoot()
-my_group = my_layer_tree.findGroup("spatial_analysis_p6_aoms")
+my_group = my_layer_tree.findGroup("spatial_analysis_p7_aoms")
 #my_group = my_layer_tree.findGroup("spatial_analysis_p7_aoms")
 
 # Generate a list of items in the group of interest.
 layer_list = my_group.children()
 
+# Details
+planting = 'p7'
+what = 'aoms'
+
+# Create an out directory.
+directory_path = os.path.join(output_dir, "{0}-{1}-extracted".format(planting, what))
+if not os.path.exists(directory_path):
+    os.makedirs(directory_path)
+
+
 # Function to iteratively extract virtual sample spaces.
-def make_samples(layer_list, input_layer_name):
+def make_samples(layer_list=None, output_dir=None, input_layer_name=None, **kwargs):
     
     for i in layer_list:
         
@@ -65,8 +76,13 @@ def make_samples(layer_list, input_layer_name):
 
         processing.run('gdal:cliprasterbymasklayer', parameters)
 
+
 # Process the eraly sample spaces.
-make_samples(layer_list=layer_list, input_layer_name=input_layer)
+params = {'output_dir':directory_path,
+          'layer_list': layer_list,
+          'input_layer_name':input_layer}
+
+make_samples(**params)
 
 # Write a meta-data file with the details of this extraction for future referecne.
 with open(os.path.join(output_dir, "sample_meta_data.txt"), "w") as tester:
@@ -79,3 +95,4 @@ tester.close()
 
 # Close project.
 qgs.exitQgis()
+
