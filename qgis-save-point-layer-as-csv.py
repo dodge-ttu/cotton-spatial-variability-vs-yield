@@ -19,7 +19,7 @@ def change_projections(layer_list=None, output_dir=None):
             'layer': layer,
             'fileName': os.path.join(output_dir, "{0}_process".format(layer.name())),
             'fileEncoding': "utf-8",
-            'destCRS': QgsCoordinateReferenceSystem('EPSG:4326'),
+            'destCRS': QgsCoordinateReferenceSystem('EPSG:3670'),
             'driverName': 'CSV',
             'layerOptions': ['GEOMETRY=AS_XY',
                              'CREATE_CSVT=NO',
