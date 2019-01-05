@@ -1,8 +1,10 @@
 import os
+import re
 import numpy as np
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.offsetbox import AnchoredText
 
 mpl.rcParams['axes.formatter.useoffset'] = True
 mpl.rcParams['axes.formatter.offset_threshold'] = 1
@@ -107,26 +109,31 @@ for (mean_distances, df) in zip(mean_distances_all_aoms, data_frames):
 # Create some visuals.
 fig, axs = plt.subplots(4,4, figsize=(12,12))
 
-for (df,ax) in zip(data_frames,axs.ravel()):
+for (ax, df, filename) in zip(axs.ravel(), data_frames, point_csv_files):
     ax.plot(df.X, df.Y, 'o', markersize = 2)
     ax.tick_params(axis='both', labelsize=6)
 
+    anchored_text = AnchoredText(re.findall(r'\d+', filename)[1], loc='upper right', prop={'size': 10})
+    ax.add_artist(anchored_text)
 
-fig.suptitle('GPS Location of Seedlings for AOMS in Planting {0}'.format(planting[1]))
+fig.suptitle('GPS Location of Seedlings for AOMS in Planting {0}'.format(planting[1]), fontsize=16, fontweight='bold')
 fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
 plt.subplots_adjust(top=0.94)
 plt.savefig(os.path.join(input_directory, 'points-multiples.png'))
 
 # Make multiples of histograms
-fig, axs = plt.subplots(4, 4, figsize=(12, 12))
+fig, axs = plt.subplots(4, 4, figsize=(12, 12), sharex=True, sharey=True)
 
-for (ax, df) in zip(axs.ravel(), data_frames):
+for (ax, df, filename) in zip(axs.ravel(), data_frames, point_csv_files):
     data = df.loc[:, 'mean_distance']
     bins = np.linspace(data.min(), data.max(), 30)
     ax.hist(data, color='#0FC25B', edgecolor='k', bins=bins)
 
+    anchored_text = AnchoredText(re.findall(r'\d+', filename)[1], loc='upper right', prop={'size': 10})
+    ax.add_artist(anchored_text)
 
-fig.suptitle('Ditribution Based on Mean Distance Planting {0}'.format(planting[1]))
+
+fig.suptitle('Ditribution Based on Mean Distance Planting {0}'.format(planting[1]), fontsize=16, fontweight='bold')
 fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
 plt.subplots_adjust(top=0.94)
 plt.savefig(os.path.join(input_directory, 'distance-hist-multiples.png'))
@@ -134,7 +141,7 @@ plt.savefig(os.path.join(input_directory, 'distance-hist-multiples.png'))
 # KMeans clustering with scikit-learn.
 fig, axs = plt.subplots(4, 4, figsize=(12, 12))
 
-for (ax, df) in zip(axs.ravel(), data_frames):
+for (ax, df, filename) in zip(axs.ravel(), data_frames, point_csv_files):
     X = df.loc[:, 'X'].values
     Y = df.loc[:, 'Y'].values
 
@@ -147,8 +154,10 @@ for (ax, df) in zip(axs.ravel(), data_frames):
 
     ax.scatter(X,Y, c=pred_y, s = 4)
 
+    anchored_text = AnchoredText(re.findall(r'\d+', filename)[1], loc='upper right', prop={'size': 10})
+    ax.add_artist(anchored_text)
 
-fig.suptitle('KMeans Clustering Planting {0}'.format(planting[1]))
+fig.suptitle('KMeans Clustering Planting {0}'.format(planting[1]), fontsize=16, fontweight='bold')
 fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
 plt.subplots_adjust(top=0.94)
 plt.savefig(os.path.join(input_directory, 'cluster-multiples.png'))
@@ -156,7 +165,7 @@ plt.savefig(os.path.join(input_directory, 'cluster-multiples.png'))
 # DBSCAN clustering with scikit-learn.
 fig, axs = plt.subplots(4, 4, figsize=(12, 12))
 
-for (ax, df) in zip(axs.ravel(), data_frames):
+for (ax, df, filename) in zip(axs.ravel(), data_frames, point_csv_files):
 
 
     X = df.loc[:, 'X'].values
@@ -171,8 +180,10 @@ for (ax, df) in zip(axs.ravel(), data_frames):
 
     ax.scatter(X,Y, c=pred_y, s = 4)
 
+    anchored_text = AnchoredText(re.findall(r'\d+', filename)[1], loc='upper right', prop={'size': 10})
+    ax.add_artist(anchored_text)
 
-fig.suptitle('DBSCAN Clustering Planting {0}'.format(planting[1]))
+fig.suptitle('DBSCAN Clustering Planting {0}'.format(planting[1]), fontsize=16, fontweight='bold')
 fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
 plt.subplots_adjust(top=0.94)
 plt.savefig(os.path.join(input_directory, 'DBSCAN-cluster-multiples.png'))
