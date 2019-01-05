@@ -12,7 +12,7 @@ def count_white_pix(sample_images=None, thresh_value=None):
     pixel_counts = []
 
     for image, ID_tag in sample_images:
-        h,w,c = image.shape
+        # h,w,c = image.shape
         b,g,r = cv2.split(image)
         image_copy = image.copy()
         img_gray = b
@@ -55,12 +55,16 @@ def count_white_pix(sample_images=None, thresh_value=None):
 #
 #     return GSD
 
+# Details.
+planting = 'p7'
+what = 'aoms'
 
 # Define path to extracted samples.
-input_dir = '/home/will/cotton spatial variability vs yield analysis/2018-rain-matrix-p7-p6-extractions-and-data/' \
-            '2018_p7_p6_extractions/p7-yield-aoms-extracted'
+input_dir = '/home/will/cotton spatial variability vs yield analysis/' \
+            '2018-rain-matrix-p7-p6-extractions-and-data/' \
+            '2018_p7_p6_extractions/{0}-yield-aoms-extracted'.format(planting)
 
-# Get extracted samples filenames.
+# Get extracted sample file names.
 files_in_dir = [i for i in os.listdir(input_dir) if i.endswith(".tif")]
 
 # Create a list of aom images.
@@ -77,9 +81,6 @@ an_output_dir = "/home/will/cotton spatial variability vs yield analysis/" \
 # Provide an ID for the analysis.
 analysis_id = "2018-11-15_65_75_35_rainMatrix_modified"
 
-# Details.
-planting = 'p7'
-what = 'yield-aoms'
 
 # Create an out sub-directory.
 directory_path = os.path.join(an_output_dir, "{0}-{1}-yield-estimates".format(planting, what))
@@ -94,7 +95,7 @@ params = {
 
 images_counted_and_marked, pixel_counts = count_white_pix(**params)
 
-# Generate csv data.
+# Generate CSV data.
 df = pd.DataFrame(pixel_counts)
 df.columns = ["pix_counts", "ID_tag"]
 
@@ -106,8 +107,37 @@ GSD = 1.1
 # Calculate 2D yield area.
 df.loc[:, "2D_yield_area"] = df.loc[:, "pix_counts"] * 1.1
 
+# Get per AOM area, manually exported from QGIS at the moment.
+virtual_sample_spaces_in_meters = '/home/will/cotton spatial variability vs yield analysis/' \
+                                  '2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/' \
+                                  'virtual_aom_areas-{0}.csv'.format(planting)
+
+# Get area data for each virtual region of interest.
+df_area = pd.read_csv(virtual_sample_spaces_in_meters)
+
+# Generate an ID for the join column from the spatial_p6_aom15.tif
+df_area.loc[:, 'ID_tag'] = ['spatial_{0}_aom{1}.tif'.format(planting, x) for x in df_area.loc[:, 'aom_id'].values]
+
+# Merge data.
+df_both = df.merge(df_area, left_on='ID_tag', right_on='ID_tag', how='outer')
+
+# Yield model y = 0.658 * x - 35.691
+df_both.loc[:, 'est_yield'] = df_both.loc[:, '2D_yield_area'] * 0.658
+
+# Per square meter yield,
+df_both.loc[:, 'g_per_sq_meter_yield'] = df_both.loc[:, 'est_yield'] / df_both.loc[:, 'area']
+
+# Sort values.
+df_both.sort_values(by=['g_per_sq_meter_yield'], inplace=True)
+
+# 1 gram per meter is 8.92179 pounds per acre.
+df_both.loc[:, 'lb_per_ac_yield'] = df_both.loc[:, 'g_per_sq_meter_yield'] * 8.92179
+
+# Lint Yield, turnout.
+df_both.loc[:, 'turnout_lb_per_ac_yield'] = df_both.loc[:, 'lb_per_ac_yield'] * .38
+
 # Write pix count data.
-df.to_csv(os.path.join(directory_path, "pix-counts-for-{0}.csv".format(analysis_id)))
+df_both.to_csv(os.path.join(directory_path, "pix-counts-for-{0}.csv".format(analysis_id)))
 
 # Write marked sample images for inspection.
 for (image,image_name) in images_counted_and_marked:

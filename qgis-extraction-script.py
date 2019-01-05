@@ -40,9 +40,12 @@ if __name__ == '__main__':
         "2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/"
 
     # Define input layer.
-    # input_layer = "2018-11-15_65_75_35_rainMatrix_modified" # yield
-    input_layer = "2018-06-21_75_75_20_rainMatrix_odm_orthophoto_modified" # seedlings
+    input_layer = "2018-11-15_65_75_35_rainMatrix_modified" # yield
+    # input_layer = "2018-06-21_75_75_20_rainMatrix_odm_orthophoto_modified" # seedling
 
+    # Details
+    planting = 'p7'
+    what = 'yield-aoms'
 
     # Create a reference to the QGIS application.
     qgs = QgsApplication([], False)
@@ -64,14 +67,10 @@ if __name__ == '__main__':
 
     # Return the layer tree and isolate the group of interest to programmatically extract the individual
     my_layer_tree = QgsProject.instance().layerTreeRoot()
-    my_group = my_layer_tree.findGroup("spatial_analysis_p6_aoms")
+    my_group = my_layer_tree.findGroup("spatial_analysis_{0}_aoms".format(planting))
 
     # Generate a list of items in the group of interest.
     a_layer_list = my_group.children()
-
-    # Details
-    planting = 'p6'
-    what = 'seedling-aoms'
 
     # Create an out directory.
     directory_path = os.path.join(an_output_dir, "{0}-{1}-extracted".format(planting, what))

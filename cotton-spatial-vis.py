@@ -16,7 +16,6 @@ from sklearn.metrics import silhouette_samples, silhouette_score
 import matplotlib.cm as cm
 
 
-
 def clean_poly_eq(coefficients, dec_dig):
     n = len(coefficients)
     degs = [i for i in range(n)]
@@ -47,9 +46,13 @@ def get_poly_hat(x_values, y_values, poly_degree):
 
     return (coeffs, poly_eqn, r_square)
 
+# Details.
+planting = 'p6'
+
 # Define input directory.
 input_directory = '/home/will/cotton spatial variability vs yield analysis/' \
-                  '2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/p7-points-csv-data'
+                  '2018-rain-matrix-p7-p6-extractions-and-data/' \
+                  '2018_p7_p6_extractions/{0}-points-csv-data'.format(planting)
 
 # List files of interest in the input directory.
 point_csv_files = [filename for filename in os.listdir(input_directory) if filename.endswith('.csv')]
@@ -66,7 +69,7 @@ for df in data_frames:
     df.drop(columns=['Unnamed: 3'], inplace=True)
 
 # Organize point coordinates to be used in scipy.spatial
-# Calculate distance within aoms
+# Calculate distance within aoms.
 within_aoms_distance = []
 for (df, filename) in zip(data_frames, point_csv_files):
     x = df.loc[:, 'X'].values
@@ -91,7 +94,7 @@ for (distance_matrix, filename) in within_aoms_distance:
     mean_distances = []
     for dist_one2all in distance_matrix:
         a_mean = dist_one2all.mean()
-        # Covnvert State Plane NAD83 unit of survey feet to meters.
+        # Convert State Plane NAD83 unit of survey feet to meters.
         a_mean_feet = a_mean * 0.3048
         mean_distances.append(a_mean_feet)
 
@@ -101,7 +104,6 @@ for (distance_matrix, filename) in within_aoms_distance:
 for (mean_distances, df) in zip(mean_distances_all_aoms, data_frames):
     df.loc[:, 'mean_distance'] = mean_distances
 
-from matplotlib.ticker import FormatStrFormatter
 # Create some visuals.
 fig, axs = plt.subplots(4,4, figsize=(12,12))
 
@@ -109,7 +111,8 @@ for (df,ax) in zip(data_frames,axs.ravel()):
     ax.plot(df.X, df.Y, 'o', markersize = 2)
     ax.tick_params(axis='both', labelsize=6)
 
-fig.suptitle('GPS locations of seedlings')
+
+fig.suptitle('GPS Location of Seedlings for AOMS in Planting {0}'.format(planting[1]))
 fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
 plt.subplots_adjust(top=0.94)
 plt.savefig(os.path.join(input_directory, 'points-multiples.png'))
@@ -123,12 +126,12 @@ for (ax, df) in zip(axs.ravel(), data_frames):
     ax.hist(data, color='#0FC25B', edgecolor='k', bins=bins)
 
 
-fig.suptitle('Ditribution Based on Mean Distance')
+fig.suptitle('Ditribution Based on Mean Distance Planting {0}'.format(planting[1]))
 fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
 plt.subplots_adjust(top=0.94)
 plt.savefig(os.path.join(input_directory, 'distance-hist-multiples.png'))
 
-# Kmeans clustering with scikitlearn.
+# KMeans clustering with scikit-learn.
 fig, axs = plt.subplots(4, 4, figsize=(12, 12))
 
 for (ax, df) in zip(axs.ravel(), data_frames):
@@ -145,16 +148,78 @@ for (ax, df) in zip(axs.ravel(), data_frames):
     ax.scatter(X,Y, c=pred_y, s = 4)
 
 
-fig.suptitle('KMeans Clustering')
+fig.suptitle('KMeans Clustering Planting {0}'.format(planting[1]))
 fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
 plt.subplots_adjust(top=0.94)
 plt.savefig(os.path.join(input_directory, 'cluster-multiples.png'))
 
-# KMeans cluster silhouette analysis
+# DBSCAN clustering with scikit-learn.
+fig, axs = plt.subplots(4, 4, figsize=(12, 12))
+
+for (ax, df) in zip(axs.ravel(), data_frames):
+
+
+    X = df.loc[:, 'X'].values
+    Y = df.loc[:, 'Y'].values
+
+    coords = []
+    for (x, y) in zip(X, Y):
+        coords.append((x, y))
+
+    #coords = np.array(coords)
+    pred_y = DBSCAN(eps=3, min_samples=10).fit_predict(coords)
+
+    ax.scatter(X,Y, c=pred_y, s = 4)
+
+
+fig.suptitle('DBSCAN Clustering Planting {0}'.format(planting[1]))
+fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
+plt.subplots_adjust(top=0.94)
+plt.savefig(os.path.join(input_directory, 'DBSCAN-cluster-multiples.png'))
+
+
+#region Silhouette analysis
+#
+# Silhouette analysis code from scikit-learn documentation here:
+# https://scikit-learn.org/stable/auto_examples/cluster/plot_kmeans_silhouette_analysis.html
+#
+# Excerpt:
+#
+# ===============================================================================
+# Selecting the number of clusters with silhouette analysis on KMeans clustering
+# ===============================================================================
+#
+# Silhouette analysis can be used to study the separation distance between the
+# resulting clusters. The silhouette plot displays a measure of how close each
+# point in one cluster is to points in the neighboring clusters and thus provides
+# a way to assess parameters like number of clusters visually. This measure has a
+# range of [-1, 1].
+#
+# Silhouette coefficients (as these values are referred to as) near +1 indicate
+# that the sample is far away from the neighboring clusters. A value of 0
+# indicates that the sample is on or very close to the decision boundary between
+# two neighboring clusters and negative values indicate that those samples might
+# have been assigned to the wrong cluster.
+#
+# In this example the silhouette analysis is used to choose an optimal value for
+# ``n_clusters``. The silhouette plot shows that the ``n_clusters`` value of 3, 5
+# and 6 are a bad pick for the given data due to the presence of clusters with
+# below average silhouette scores and also due to wide fluctuations in the size
+# of the silhouette plots. Silhouette analysis is more ambivalent in deciding
+# between 2 and 4.
+#
+# Also from the thickness of the silhouette plot the cluster size can be
+# visualized. The silhouette plot for cluster 0 when ``n_clusters`` is equal to
+# 2, is bigger in size owing to the grouping of the 3 sub clusters into one big
+# cluster. However when the ``n_clusters`` is equal to 4, all the plots are more
+# or less of similar thickness and hence are of similar sizes as can be also
+# verified from the labelled scatter plot on the right.
+#
+#endregion
 
 X= coords
 
-range_n_clusters = list(range(2,8))
+range_n_clusters = list(range(2,3))
 for n_clusters in range_n_clusters:
     # Create a subplot with 1 row and 2 columns
     fig, (ax1, ax2) = plt.subplots(1, 2)
@@ -244,31 +309,3 @@ for n_clusters in range_n_clusters:
                  fontsize=14, fontweight='bold')
 
 plt.show()
-
-# DBSCAN clustering with scikitlearn.
-fig, axs = plt.subplots(4, 4, figsize=(12, 12))
-
-for (ax, df) in zip(axs.ravel(), data_frames):
-
-
-    X = df.loc[:, 'X'].values
-    Y = df.loc[:, 'Y'].values
-
-    coords = []
-    for (x, y) in zip(X, Y):
-        coords.append((x, y))
-
-    #coords = np.array(coords)
-    pred_y = DBSCAN(eps=3, min_samples=10).fit_predict(coords)
-
-    ax.scatter(X,Y, c=pred_y, s = 4)
-
-
-fig.suptitle('DBSCAN Clustering')
-fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
-plt.subplots_adjust(top=0.94)
-plt.savefig(os.path.join(input_directory, 'DBSCAN-cluster-multiples.png'))
-
-import matplotlib as mpl
-
-
