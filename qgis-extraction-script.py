@@ -62,9 +62,6 @@ if __name__ == '__main__':
     # Initialize processing.
     Processing.initialize()
 
-    # Create bridge between loaded project and canvas
-    bridge = project.layerTreeRegistryBridge()
-
     # Return the layer tree and isolate the group of interest to programmatically extract the individual
     my_layer_tree = QgsProject.instance().layerTreeRoot()
     my_group = my_layer_tree.findGroup("spatial_analysis_{0}_aoms".format(planting))

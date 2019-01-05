@@ -66,9 +66,7 @@ if __name__ == '__main__':
 
     a_layer_of_points = [v for k, v in map_layers.items() if planting in k and what in k]
 
-    # Create a directory to hold partially processed copies of shapefile layers as
-    # processing runs are called on the layers.
-
+    # Create a sub-directory.
     directory_path = os.path.join(output_dir, "{0}-{1}-csv-data".format(planting, what))
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
