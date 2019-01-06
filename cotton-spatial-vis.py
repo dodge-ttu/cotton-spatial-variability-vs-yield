@@ -15,9 +15,10 @@ from scipy.spatial import distance
 # from scipy.spatial import Voronoi, voronoi_plot_2d
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
-from sklearn.metrics import silhouette_samples, silhouette_score
-import matplotlib.cm as cm
-
+# from sklearn.metrics import silhouette_samples, silhouette_score
+# import matplotlib.cm as cm
+# from scipy.stats import norm
+# from sklearn.neighbors import KernelDensity
 
 def clean_poly_eq(coefficients, dec_dig):
     n = len(coefficients)
@@ -88,7 +89,6 @@ for (df, aom_number) in data_frames:
     distance_matrix = distance.cdist(coords, coords, 'euclidean')
     within_aoms_distance.append((distance_matrix, aom_number))
 
-# Test to verify length single element in distance matrix and
 # >>>len(distance_matrix) == len(coords) == len(distance_matrix[0])
 # True
 
@@ -127,13 +127,17 @@ plt.subplots_adjust(top=0.94)
 plt.savefig(os.path.join(input_directory, 'points-multiples.png'))
 
 # Make multiples of histograms.
-fig, axs = plt.subplots(4, 4, figsize=(14, 10), sharey=True, sharex=True)
+fig, axs = plt.subplots(4, 4, figsize=(12, 12), sharey=True, sharex=True)
 
 for (ax, (df, aom_number)) in zip(axs.ravel(), data_frames):
     data = df.loc[:, 'mean_distance']
     bins = np.linspace(0, 10, 21)
-    ax.hist(data, color='#0FC25B', edgecolor='k', bins=bins, rwidth=0.70)
+    ax.hist(data, color='#0FC25B', edgecolor='k', bins=bins, rwidth=0.70, density=True)
     ax.set_xlim(0, 10)
+
+    mu = 0
+    sigma = 1
+
 
     anchored_text = AnchoredText(aom_number, loc='upper right', prop={'size': 10})
     ax.add_artist(anchored_text)
@@ -233,7 +237,7 @@ plt.savefig(os.path.join(input_directory, 'DBSCAN-cluster-multiples.png'))
 #
 #
 #
-# X= coords
+# X = coords
 #
 # range_n_clusters = list(range(2,3))
 # for n_clusters in range_n_clusters:
