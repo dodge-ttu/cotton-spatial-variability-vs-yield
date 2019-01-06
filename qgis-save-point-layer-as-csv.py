@@ -27,13 +27,12 @@ def change_projections(layer_list=None, output_dir=None):
                              'WRITE_BOM=NO'],
         }
 
-        # Use ** to unpack the dictionary as arguments for the function
         QgsVectorFileWriter.writeAsVectorFormat(**parameters)
 
 
 if __name__ == '__main__':
 
-    # Append path to QGIS.
+    # Append QGIS to path.
     sys.path.append("/home/will/cotton spatial variability vs yield analysis/"
                     "cott_spat_interp/lib/python3/dist-packages")
 
@@ -71,13 +70,13 @@ if __name__ == '__main__':
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
 
-    # Run function
+    # Run function.
     params = {'output_dir': directory_path,
               'layer_list': a_layer_of_points}
 
     change_projections(**params)
 
-    # Write a meta-data file with the details of this extraction for future referecne.
+    # Write a meta-data file with the details of this extraction for future reference.
     with open(os.path.join(directory_path, "sample_meta_data.txt"), "w") as tester:
         tester.write("""planting: {0}\n
                         what was extracted: {1}\n
