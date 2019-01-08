@@ -62,8 +62,7 @@ if __name__ == "__main__":
 
     # Define path to extracted samples.
     input_dir = '/home/will/cotton spatial variability vs yield analysis/' \
-                '2018-rain-matrix-p7-p6-extractions-and-data/' \
-                '2018_p7_p6_extractions/{0}-yield-aoms-extracted'.format(planting)
+                '2018-p7-p6-analysis/{0}-yield-aoms-extracted'.format(planting)
 
     # Get extracted sample file names.
     files_in_dir = [i for i in os.listdir(input_dir) if i.endswith(".tif")]
@@ -77,11 +76,10 @@ if __name__ == "__main__":
 
     # Define path to output directory.
     an_output_dir = "/home/will/cotton spatial variability vs yield analysis/" \
-                    "2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/"
+                    "2018-p7-p6-analysis/"
 
     # Provide an ID for the analysis.
     analysis_id = "2018-11-15_65_75_35_rainMatrix_modified"
-
 
     # Create an out sub-directory.
     directory_path = os.path.join(an_output_dir, "{0}-{1}-yield-estimates".format(planting, what))
@@ -110,19 +108,19 @@ if __name__ == "__main__":
 
     # Get per AOM area, manually exported from QGIS at the moment.
     virtual_sample_spaces_in_meters = '/home/will/cotton spatial variability vs yield analysis/' \
-                                      '2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/' \
+                                      '2018-p6-p7-data/' \
                                       'virtual_aom_areas-{0}.csv'.format(planting)
 
     # Get area data for each virtual region of interest.
     df_area = pd.read_csv(virtual_sample_spaces_in_meters)
 
-    # Generate an ID for the join column from the spatial_p6_aom15.tif
-    df_area.loc[:, 'ID_tag'] = ['spatial_{0}_aom{1}.tif'.format(planting, x) for x in df_area.loc[:, 'aom_id'].values]
+    # Generate an ID for the join column from the filename written as: spatial_p6_aom_15.tif
+    df_area.loc[:, 'ID_tag'] = ['spatial_{0}_aom_{1}.tif'.format(planting, str(x).zfill(2)) for x in df_area.loc[:, 'aom_id'].values]
 
     # Merge data.
     df_both = df.merge(df_area, left_on='ID_tag', right_on='ID_tag', how='outer')
 
-    # Yield model y = 0.658 * x - 35.691
+    # Yield model y = 0.658 * x - 35.691 based on current findings
     df_both.loc[:, 'est_yield'] = df_both.loc[:, '2D_yield_area'] * 0.658
 
     # Per square meter yield,

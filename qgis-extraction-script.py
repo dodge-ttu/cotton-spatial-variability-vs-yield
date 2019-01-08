@@ -37,14 +37,14 @@ if __name__ == '__main__':
 
     # Define path to output directory.
     an_output_dir = "/home/will/cotton spatial variability vs yield analysis/" \
-        "2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/"
+        "/2018-p7-p6-analysis/"
 
     # Define input layer.
     input_layer = "2018-11-15_65_75_35_rainMatrix_modified" # yield
     # input_layer = "2018-06-21_75_75_20_rainMatrix_odm_orthophoto_modified" # seedling
 
     # Details
-    planting = 'p7'
+    planting = 'p6'
     what = 'yield-aoms'
 
     # Create a reference to the QGIS application.

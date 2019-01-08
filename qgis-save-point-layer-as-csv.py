@@ -32,6 +32,10 @@ def change_projections(layer_list=None, output_dir=None):
 
 if __name__ == '__main__':
 
+    # Details.
+    planting = 'p6'
+    what = 'points'
+
     # Append QGIS to path.
     sys.path.append("/home/will/cotton spatial variability vs yield analysis/"
                     "cott_spat_interp/lib/python3/dist-packages")
@@ -42,7 +46,7 @@ if __name__ == '__main__':
 
     # Define path to output directory.
     output_dir = "/home/will/cotton spatial variability vs yield analysis/" \
-                 "2018-rain-matrix-p7-p6-extractions-and-data/2018_p7_p6_extractions/"
+                 "/2018-p7-p6-analysis/"
 
     # Create a reference to the QGIS application.
     qgs = QgsApplication([], False)
@@ -59,9 +63,6 @@ if __name__ == '__main__':
     # Get map layers.
     map_layers = project.mapLayers()
 
-    # Details.
-    planting = 'p7'
-    what = 'points'
 
     a_layer_of_points = [v for k, v in map_layers.items() if planting in k and what in k]
 

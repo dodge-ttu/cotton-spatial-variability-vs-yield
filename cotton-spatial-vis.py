@@ -1,8 +1,11 @@
 import os
 import re
 import numpy as np
+import pandas as pd
 
 import matplotlib as mpl
+import matplotlib.cm as cm
+import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import AnchoredText
 
@@ -10,15 +13,14 @@ from matplotlib.offsetbox import AnchoredText
 mpl.rcParams['axes.formatter.useoffset'] = True
 mpl.rcParams['axes.formatter.offset_threshold'] = 1
 
-import pandas as pd
+from scipy.stats import norm
 from scipy.spatial import distance
-# from scipy.spatial import Voronoi, voronoi_plot_2d
+from scipy.spatial import Voronoi, voronoi_plot_2d
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
 # from sklearn.metrics import silhouette_samples, silhouette_score
-# import matplotlib.cm as cm
-# from scipy.stats import norm
-# from sklearn.neighbors import KernelDensity
+from sklearn.neighbors import KernelDensity
+
 
 def clean_poly_eq(coefficients, dec_dig):
     n = len(coefficients)
@@ -55,11 +57,25 @@ planting = 'p6'
 
 # Define input directory.
 input_directory = '/home/will/cotton spatial variability vs yield analysis/' \
-                  '2018-rain-matrix-p7-p6-extractions-and-data/' \
-                  '2018_p7_p6_extractions/{0}-points-csv-data'.format(planting)
+                  '2018-p7-p6-analysis/{0}-points-csv-data'.format(planting)
+
+# Define input directory for extracted samples.
+image_in_dir = '/home/will/cotton spatial variability vs yield analysis/' \
+               '2018-p7-p6-analysis/{0}-aoms-yield-estimates'.format(planting)
+
+# Define output directory for plots.
+visuals_directory = '/home/will/cotton spatial variability vs yield analysis/' \
+            '2018-p7-p6-analysis/{0}-visuals'.format(planting)
+
+# Create an out directory for visuals.
+if not os.path.exists(visuals_directory):
+    os.makedirs(visuals_directory)
 
 # List files of interest in the input directory.
 point_csv_files = [filename for filename in os.listdir(input_directory) if filename.endswith('.csv')]
+
+# List image files of interest from the image_in_dir.
+marked_image_filenames = [filename for filename in os.listdir(image_in_dir) if filename.endswith('.png')]
 
 # Read csv data into pandas.
 data_frames = []
@@ -68,12 +84,19 @@ for filename in point_csv_files:
     aom_number = re.findall(r'\d+', filename)[1]
     data_frames.append((df, aom_number))
 
+# Read marked sample images so they can be used on plots.
+marked_images = []
+for filename in marked_image_filenames:
+    matplotlib_img = mpimg.imread(os.path.join(image_in_dir, filename))
+    aom_number = re.findall(r'\d+', filename)[1]
+    marked_images.append((matplotlib_img, aom_number))
+
 # Clean up data frames and insert id column.
 for (df, aom_number) in data_frames:
     df.loc[:, 'id'] = list(range(len(df)))
     df.drop(columns=['Unnamed: 3'], inplace=True)
 
-# Organize point coordinates to be used in scipy.spatial
+# Organize point coordinates to be used in scipy.spatial.
 # Calculate distance within aoms.
 within_aoms_distance = []
 for (df, aom_number) in data_frames:
@@ -97,10 +120,11 @@ mean_distances_all_aoms = []
 for (distance_matrix, aom_number) in within_aoms_distance:
     mean_distances = []
     for dist_one2all in distance_matrix:
-        a_mean = dist_one2all.mean()
+        # Mean of each plant's distance to all other plants.
+        a_mean = np.mean(dist_one2all)
         # Convert State Plane NAD83 unit of survey feet to meters.
-        a_mean_feet = a_mean * 0.3048
-        mean_distances.append(a_mean_feet)
+        a_mean_meters = a_mean * 0.3048
+        mean_distances.append(a_mean_meters)
 
     mean_distances_all_aoms.append(mean_distances)
 
@@ -110,6 +134,7 @@ for (mean_distances, (df, aom_number)) in zip(mean_distances_all_aoms, data_fram
 
 # Sort by aom_number.
 data_frames = sorted(data_frames, key=lambda x: x[1])
+marked_images = sorted(marked_images, key=lambda x: x[1])
 
 # Create some visuals.
 fig, axs = plt.subplots(4,4, figsize=(12,12))
@@ -124,20 +149,35 @@ for (ax, (df, aom_number)) in zip(axs.ravel(), data_frames):
 fig.suptitle('GPS Location of Seedlings for AOMS in Planting {0}'.format(planting[1]), fontsize=16, fontweight='bold')
 fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
 plt.subplots_adjust(top=0.94)
-plt.savefig(os.path.join(input_directory, 'points-multiples.png'))
+plt.savefig(os.path.join(visuals_directory, 'points-multiples.png'))
+plt.close()
+
+# Points with extracted images.
+fig, axs = plt.subplots(4,4, figsize=(12,12))
+
+for (ax, (df, df_aom_number), (img, img_aom_number)) in zip(axs.ravel(), data_frames, marked_images):
+    ax.imshow(img)
+    # ax.plot(df.X, df.Y, 'o', markersize = 2)
+    ax.tick_params(axis='both', labelsize=6)
+
+    anchored_text = AnchoredText(img_aom_number, loc='upper right', prop={'size': 10})
+    ax.add_artist(anchored_text)
+
+fig.suptitle('GPS Location of Seedlings for AOMS in Planting {0}'.format(planting[1]), fontsize=16, fontweight='bold')
+fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
+plt.subplots_adjust(top=0.94)
+plt.savefig(os.path.join(visuals_directory, 'image-points-multiples.png'))
+plt.close()
 
 # Make multiples of histograms.
 fig, axs = plt.subplots(4, 4, figsize=(12, 12), sharey=True, sharex=True)
 
 for (ax, (df, aom_number)) in zip(axs.ravel(), data_frames):
-    data = df.loc[:, 'mean_distance']
+    data = df.loc[:, 'mean_distance'].values
     bins = np.linspace(0, 10, 21)
-    ax.hist(data, color='#0FC25B', edgecolor='k', bins=bins, rwidth=0.70, density=True)
+    ax.hist(data, color='#0FC25B', edgecolor='k', bins=bins, rwidth=0.70)
+
     ax.set_xlim(0, 10)
-
-    mu = 0
-    sigma = 1
-
 
     anchored_text = AnchoredText(aom_number, loc='upper right', prop={'size': 10})
     ax.add_artist(anchored_text)
@@ -147,7 +187,64 @@ fig.text(0.5, 0.01, 'Binned Mean Euclidean Distance (m)', ha='center', fontsize=
 fig.text(0.01, 0.5, 'Bin Count', va='center', rotation='vertical', fontsize=12, fontweight='bold')
 fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
 plt.subplots_adjust(top=0.94)
-plt.savefig(os.path.join(input_directory, 'distance-hist-multiples.png'))
+plt.savefig(os.path.join(visuals_directory, 'distance-hist-multiples.png'))
+plt.close()
+
+# Gaussian probability density curves.
+fig, axs = plt.subplots(4, 4, figsize=(12, 12), sharey=True, sharex=True)
+
+for (ax, (df, aom_number)) in zip(axs.ravel(), data_frames):
+    data = df.loc[:, 'mean_distance'].values
+    bins = np.linspace(0, 10, 21)
+    ax.hist(data, color='#0FC25B', edgecolor='k', bins=bins, rwidth=0.70, density=True, alpha=0.5)
+
+    # Reshape data for scikit-learn.
+    data = data[:, np.newaxis]
+    bins = bins[:, np.newaxis]
+
+    kde = KernelDensity(kernel='gaussian', bandwidth=0.5).fit(data)
+    log_dens = kde.score_samples(bins)
+
+    ax.plot(bins[:, 0], np.exp(log_dens), 'r-')
+
+fig.suptitle('Probability Density Curve by Planting {0}'.format(planting[1]), fontsize=16, fontweight='bold')
+fig.text(0.5, 0.01, 'Binned Mean Euclidean Distance (m)', ha='center', fontsize=12, fontweight='bold')
+fig.text(0.01, 0.5, 'Density', va='center', rotation='vertical', fontsize=12, fontweight='bold')
+fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
+plt.subplots_adjust(top=0.94)
+plt.savefig(os.path.join(visuals_directory, 'probability-density-curve-multiples.png'))
+plt.close()
+
+# Fancy probability density function plots.
+for (df, aom_number) in (data_frames):
+    fig, ax = plt.subplots(1,1, figsize=(12, 12))
+    data = df.loc[:, 'mean_distance'].values
+    bins = np.linspace(0, 10, 21)
+    ax.hist(data, color='#0FC25B', edgecolor='k', bins=bins, rwidth=0.80, density=True, alpha=0.5)
+
+    # Reshape data for scikit-learn.
+    data = data[:, np.newaxis]
+    kde = KernelDensity(kernel='gaussian', bandwidth=0.5).fit(data)
+
+    # Resize bins for probability density function.
+    bins = np.linspace(0, 10, 101)[:, np.newaxis]
+    log_dens = kde.score_samples(bins)
+
+    ax.plot(bins[:, 0], np.exp(log_dens), 'r-')
+    ax.plot(data[:, 0], -0.008 - 0.04 * np.random.random(data.shape[0]), 'kd')
+
+    #
+    ax.set_xlim(0, 10)
+    ax.set_ylim(-0.06, 0.90)
+    ax.set_title('Probability Density Curve: AOM {0} Planting {1}'.format(aom_number, planting[1]),
+                 fontsize=16, fontweight='bold')
+    ax.set_xlabel('Binned Mean Euclidean Distance (m)', ha='center', fontsize=12, fontweight='bold',
+                  labelpad=20)
+    ax.set_ylabel('Density', va='center', rotation='vertical', fontsize=12, fontweight='bold',
+                  labelpad=20)
+    # fig.tight_layout()
+    plt.savefig(os.path.join(visuals_directory, 'probability-density-curve-aom-{0}-planting-{0}.png'.format(aom_number)))
+    plt.close()
 
 # KMeans clustering with scikit-learn.
 fig, axs = plt.subplots(4, 4, figsize=(12, 12))
@@ -171,7 +268,8 @@ for (ax, (df, aom_number)) in zip(axs.ravel(), data_frames):
 fig.suptitle('KMeans Clustering Planting {0}'.format(planting[1]), fontsize=16, fontweight='bold')
 fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
 plt.subplots_adjust(top=0.94)
-plt.savefig(os.path.join(input_directory, 'cluster-multiples.png'))
+plt.savefig(os.path.join(visuals_directory, 'cluster-multiples.png'))
+plt.close()
 
 # DBSCAN clustering with scikit-learn.
 fig, axs = plt.subplots(4, 4, figsize=(12, 12))
@@ -195,8 +293,8 @@ for (ax, (df, aom_number)) in zip(axs.ravel(), data_frames):
 fig.suptitle('DBSCAN Clustering Planting {0}'.format(planting[1]), fontsize=16, fontweight='bold')
 fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
 plt.subplots_adjust(top=0.94)
-plt.savefig(os.path.join(input_directory, 'DBSCAN-cluster-multiples.png'))
-
+plt.savefig(os.path.join(visuals_directory, 'DBSCAN-cluster-multiples.png'))
+plt.close()
 
 #region Silhouette analysis
 #
@@ -331,3 +429,28 @@ plt.savefig(os.path.join(input_directory, 'DBSCAN-cluster-multiples.png'))
 # plt.show()
 #
 #endregion
+
+# UAV measured yield analysis.
+
+yield_est_data = '/home/will/cotton spatial variability vs yield analysis/' \
+                 '2018-p7-p6-analysis/{0}-aoms-yield-estimates/' \
+                 'pix-counts-for-2018-11-15_65_75_35_rainMatrix_modified.csv'.format(planting)
+
+yield_est_data = pd.read_csv(yield_est_data)
+
+data = yield_est_data.loc[:, 'turnout_lb_per_ac_yield']
+labels = [int(re.findall(r'\d+', i)[1]) for i in yield_est_data.loc[:, 'ID_tag']]
+
+# Plot UAV measured yield values for each AOM.
+fig, ax = plt.subplots(1,1, figsize=(12,12))
+ax.bar(range(1,17), data, width=0.8, align='center', edgecolor='k', tick_label=labels)
+ax.set_xlabel('Virtual Sample ID', fontdict={'fontsize':16})
+ax.set_ylabel('Estimated Lint Yield (lb/ac)', fontdict={'fontsize':16})
+ax.tick_params(axis='both', labelsize=14)
+ax.set_title('UAV Lint Yield Estimates for Sample Spaces - Planting {0}'.format(planting[1]),
+             fontdict={'fontsize':16})
+
+anchored_text = AnchoredText('Turnout: 38%', loc=2, prop={'size':16})
+ax.add_artist(anchored_text)
+
+plt.savefig(os.path.join(visuals_directory, 'uav-yield-estimates-planting-{0}.png'.format(planting)))
