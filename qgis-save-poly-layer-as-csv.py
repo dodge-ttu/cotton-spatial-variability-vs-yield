@@ -1,13 +1,17 @@
 import os
+import re
 import sys
 from datetime import datetime
+
+import pandas as pd
+
 from qgis.core import QgsProject
 from qgis.core import QgsApplication
 from qgis.core import QgsVectorFileWriter
 from qgis.core import QgsCoordinateReferenceSystem
 
 # Change layer CRS for a list of layers:
-def change_projections(layer_list=None, output_dir=None):
+def change_projections(layer_list=None, output_dir=None, crs=None):
 
     for layer in layer_list:
 
@@ -15,22 +19,23 @@ def change_projections(layer_list=None, output_dir=None):
             'layer': layer,
             'fileName': os.path.join(output_dir, "{0}_process".format(layer.name())),
             'fileEncoding': "utf-8",
-            'destCRS': QgsCoordinateReferenceSystem('EPSG:3670'),
+            'destCRS': QgsCoordinateReferenceSystem(crs),
             'driverName': 'CSV',
-            'layerOptions': ['GEOMETRY=AS_XY',
+            'layerOptions': ['GEOMETRY=AS_WKT',
                              'CREATE_CSVT=NO',
                              'SEPARATOR=COMMA',
-                             'WRITE_BOM=NO'],
+                             'WRITE_BOM=NO',
+                             ],
         }
 
         QgsVectorFileWriter.writeAsVectorFormat(**parameters)
-
 
 if __name__ == '__main__':
 
     # Details.
     planting = 'p6'
-    what = 'points'
+    what = 'aoms'
+    crs = 'EPSG:3670'
 
     # Append QGIS to path.
     sys.path.append("/home/will/cotton spatial variability vs yield analysis/"
@@ -59,7 +64,11 @@ if __name__ == '__main__':
     # Get map layers.
     map_layers = project.mapLayers()
 
-    point_layers = [v for k, v in map_layers.items() if planting in k and what in k]
+    # Filter for desired aoms.
+    aom_layers = []
+    for (k,v) in map_layers.items():
+        if re.findall(r'spatial_{0}_aom_(..)'.format(planting), k) and 'points' not in k:
+            aom_layers.append(v)
 
     # Create a sub-directory.
     directory_path = os.path.join(output_dir, "{0}-{1}-csv-data".format(planting, what))
@@ -68,16 +77,44 @@ if __name__ == '__main__':
 
     # Run function.
     params = {'output_dir': directory_path,
-              'layer_list': point_layers}
+              'layer_list': aom_layers,
+              'crs': crs,
+              }
 
     change_projections(**params)
+
+    # Re write csv files to clean them up and organize the vertices.
+    csv_files = os.listdir(directory_path)
+    csv_files = [i for i in csv_files if i.endswith('.csv')]
+
+    data_frames = []
+
+    for filename in csv_files:
+        path = os.path.join(directory_path, filename)
+        with open(path, 'r+') as my_file:
+            data = my_file.readlines()
+
+            # Here there is only one polygon per layer so only need the line after the header.
+            data = data[1]
+
+            # Great numeric re pattern from Stack Overflow.
+            # Needed becuase the original polygon geometry is saved in WKT format that is not pandas-friendly.
+            # The vertices are basically saved a giant oddly formatted tuple with a bunch of cruft.
+            numeric_const_pattern = '[-+]? (?: (?: \d* \. \d+ ) | (?: \d+ \.? ) )(?: [Ee] [+-]? \d+ ) ?'
+            rx = re.compile(numeric_const_pattern, re.VERBOSE)
+
+            vertices = rx.findall(data)
+
+            print(vertices)
+
+
 
     # Write a meta-data file with the details of this extraction for future reference.
     with open(os.path.join(directory_path, "sample_meta_data.txt"), "w") as tester:
         tester.write("""planting: {0}\n
-                        what was extracted: {1}\n
+                        CRS: {1}\n
                         Samples Generated On: {2}\n
-                        """.format(planting, what, formatted_time))
+                        """.format(planting, crs, formatted_time))
 
     tester.close()
 

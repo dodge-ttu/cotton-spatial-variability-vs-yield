@@ -9,13 +9,10 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import AnchoredText
 
-# Force annotated axes for large numbers
-mpl.rcParams['axes.formatter.useoffset'] = True
-mpl.rcParams['axes.formatter.offset_threshold'] = 1
-
 from scipy.stats import norm
 from scipy.spatial import distance
-from scipy.spatial import Voronoi, voronoi_plot_2d
+
+from sklearn.preprocessing import scale
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
 # from sklearn.metrics import silhouette_samples, silhouette_score
@@ -136,6 +133,10 @@ for (mean_distances, (df, aom_number)) in zip(mean_distances_all_aoms, data_fram
 data_frames = sorted(data_frames, key=lambda x: x[1])
 marked_images = sorted(marked_images, key=lambda x: x[1])
 
+# Force annotated axes on plots for data with large numbers.
+mpl.rcParams['axes.formatter.useoffset'] = True
+mpl.rcParams['axes.formatter.offset_threshold'] = 1
+
 # Create some visuals.
 fig, axs = plt.subplots(4,4, figsize=(12,12))
 
@@ -156,8 +157,16 @@ plt.close()
 fig, axs = plt.subplots(4,4, figsize=(12,12))
 
 for (ax, (df, df_aom_number), (img, img_aom_number)) in zip(axs.ravel(), data_frames, marked_images):
-    ax.imshow(img)
-    # ax.plot(df.X, df.Y, 'o', markersize = 2)
+
+    x_min = df.X.min() - 1
+    x_max = df.X.max() + 1
+    y_min = df.Y.min() - 1
+    y_max = df.Y.max() + 1
+
+    extent = (x_min, x_max, y_min, y_max)
+
+    im = ax.imshow(img, origin="upper", extent=extent)
+    ax.plot(df.X, df.Y, "go", markersize=2)
     ax.tick_params(axis='both', labelsize=6)
 
     anchored_text = AnchoredText(img_aom_number, loc='upper right', prop={'size': 10})
@@ -285,7 +294,7 @@ for (ax, (df, aom_number)) in zip(axs.ravel(), data_frames):
     #coords = np.array(coords)
     pred_y = DBSCAN(eps=3, min_samples=10).fit_predict(coords)
 
-    ax.scatter(X,Y, c=pred_y, s = 4)
+    ax.scatter(X,Y, c=pred_y, cmap='RdYlGn', s = 4)
 
     anchored_text = AnchoredText(aom_number, loc='upper right', prop={'size': 10})
     ax.add_artist(anchored_text)
@@ -295,6 +304,120 @@ fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
 plt.subplots_adjust(top=0.94)
 plt.savefig(os.path.join(visuals_directory, 'DBSCAN-cluster-multiples.png'))
 plt.close()
+
+# UAV measured yield analysis.
+yield_est_data = '/home/will/cotton spatial variability vs yield analysis/' \
+                 '2018-p7-p6-analysis/{0}-aoms-yield-estimates/' \
+                 'pix-counts-for-2018-11-15_65_75_35_rainMatrix_modified.csv'.format(planting)
+
+yield_est_data = pd.read_csv(yield_est_data)
+
+data = yield_est_data.loc[:, 'turnout_lb_per_ac_yield']
+labels = [int(re.findall(r'\d+', i)[1]) for i in yield_est_data.loc[:, 'ID_tag']]
+
+# Plot UAV measured yield values for each AOM.
+fig, ax = plt.subplots(1,1, figsize=(12,12))
+ax.bar(range(1,17), data, width=0.8, align='center', edgecolor='k', tick_label=labels)
+ax.set_xlabel('Virtual Sample ID', fontdict={'fontsize':16})
+ax.set_ylabel('Estimated Lint Yield (lb/ac)', fontdict={'fontsize':16})
+ax.tick_params(axis='both', labelsize=14)
+ax.set_title('UAV Lint Yield Estimates for Sample Spaces - Planting {0}'.format(planting[1]),
+             fontdict={'fontsize':16})
+
+anchored_text = AnchoredText('Turnout: 38%', loc=2, prop={'size':16})
+ax.add_artist(anchored_text)
+
+plt.savefig(os.path.join(visuals_directory, 'uav-yield-estimates-planting-{0}.png'.format(planting)))
+plt.close()
+
+# Interpolated yield maps.
+# Define input directory.
+cott_pix_input_directory = '/home/will/cotton spatial variability vs yield analysis/' \
+                            '2018-p7-p6-analysis/{0}-white-pixel-locations'.format(planting)
+
+cott_pix_filenames = [i for i in os.listdir(cott_pix_input_directory) if i.endswith('.csv')]
+
+# Read csv data into pandas.
+cott_pix_dfs = []
+for filename in cott_pix_filenames:
+    df = pd.read_csv(os.path.join(cott_pix_input_directory, filename))
+    aom_number = re.findall(r'\d+', filename)[1]
+    cott_pix_dfs.append((df, aom_number))
+
+# Sort dfs.
+cott_pix_dfs = sorted(cott_pix_dfs, key=lambda x: x[1])
+
+# UAV measured yield mask multiples:
+fig, axs = plt.subplots(4, 4, figsize=(12, 12))
+
+for (ax, (df, aom_number)) in zip(axs.ravel(), cott_pix_dfs):
+    ax.plot(df.x, df.y, 'ro', markersize=.6)
+
+    anchored_text = AnchoredText(aom_number, loc='upper right', prop={'size': 10})
+    ax.add_artist(anchored_text)
+
+fig.suptitle('UAV measured yield Planting {0}'.format(planting[1]), fontsize=16, fontweight='bold')
+fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
+plt.subplots_adjust(top=0.94)
+plt.savefig(os.path.join(visuals_directory, 'uav-measured-yield-multiples.png'))
+plt.close()
+
+# DBSCAN over UAV estimated yield.
+fig, axs = plt.subplots(4, 4, figsize=(12, 12))
+
+for (ax, (cott_df, cott_aom_number), (df, aom_number)) in zip(axs.ravel(), cott_pix_dfs, data_frames):
+
+    cott_x = cott_df.loc[:, 'x'].values
+    cott_y = cott_df.loc[:, 'y'].values
+    cott_h = cott_df.loc[:, 'h'].values
+    cott_w = cott_df.loc[:, 'w'].values
+
+    X = df.loc[:, 'X'].values
+    Y = df.loc[:, 'Y'].values
+
+    x_min = X.min()
+    y_min = Y.min()
+    x_max = X.max()
+    y_max = Y.max()
+
+    # GSD scale pixel coords.
+    cott_x = cott_x
+    cott_y = cott_y
+
+    # Find scalers to relate the x,y pixel coords to EPSG:3670 Coordinate Reference System.
+    cott_x_scaler = (x_max - x_min) / (cott_w)
+    cott_y_scaler = (y_max - y_min) / (cott_h)
+
+    # Scale pixel coords.
+    cott_x = (x_min) + (cott_x * cott_x_scaler)
+    cott_y = (y_min) + (cott_y * cott_y_scaler)
+
+    # Modify y-axis data because it's image data and has origin at "upper left".
+    # cott_y = cott_h - cott_y
+
+    coords = []
+    for (x, y) in zip(X, Y):
+        coords.append((x, y))
+
+    pred_y = DBSCAN(eps=3, min_samples=10).fit_predict(coords)
+
+    ax.plot(cott_x, cott_y, 'ro', markersize=0.1)
+    ax.scatter(X, Y, c=pred_y, cmap='tab10', s=4)
+
+    anchored_text = AnchoredText(aom_number, loc='upper right', prop={'size': 10})
+    ax.add_artist(anchored_text)
+
+    #
+
+fig.suptitle('UAV measured yield Planting {0}'.format(planting[1]), fontsize=16, fontweight='bold')
+fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
+plt.subplots_adjust(top=0.94)
+plt.savefig(os.path.join(visuals_directory, 'dbscan-uav-measured-yield-multiples.png'))
+plt.close()
+
+
+
+
 
 #region Silhouette analysis
 #
@@ -429,28 +552,3 @@ plt.close()
 # plt.show()
 #
 #endregion
-
-# UAV measured yield analysis.
-
-yield_est_data = '/home/will/cotton spatial variability vs yield analysis/' \
-                 '2018-p7-p6-analysis/{0}-aoms-yield-estimates/' \
-                 'pix-counts-for-2018-11-15_65_75_35_rainMatrix_modified.csv'.format(planting)
-
-yield_est_data = pd.read_csv(yield_est_data)
-
-data = yield_est_data.loc[:, 'turnout_lb_per_ac_yield']
-labels = [int(re.findall(r'\d+', i)[1]) for i in yield_est_data.loc[:, 'ID_tag']]
-
-# Plot UAV measured yield values for each AOM.
-fig, ax = plt.subplots(1,1, figsize=(12,12))
-ax.bar(range(1,17), data, width=0.8, align='center', edgecolor='k', tick_label=labels)
-ax.set_xlabel('Virtual Sample ID', fontdict={'fontsize':16})
-ax.set_ylabel('Estimated Lint Yield (lb/ac)', fontdict={'fontsize':16})
-ax.tick_params(axis='both', labelsize=14)
-ax.set_title('UAV Lint Yield Estimates for Sample Spaces - Planting {0}'.format(planting[1]),
-             fontdict={'fontsize':16})
-
-anchored_text = AnchoredText('Turnout: 38%', loc=2, prop={'size':16})
-ax.add_artist(anchored_text)
-
-plt.savefig(os.path.join(visuals_directory, 'uav-yield-estimates-planting-{0}.png'.format(planting)))

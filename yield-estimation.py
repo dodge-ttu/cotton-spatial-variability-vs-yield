@@ -10,19 +10,21 @@ def count_white_pix(sample_images=None, thresh_value=None):
 
     images_counted_marked = []
     pixel_counts = []
+    masks = []
 
     for image, ID_tag in sample_images:
-        # h,w,c = image.shape
-        b,g,r = cv2.split(image)
         image_copy = image.copy()
+        h,w,c = image.shape
+        b,g,r = cv2.split(image)
+
         img_gray = b
         #img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         #img_gray = cv2.GaussianBlur(img_gray, (3, 3), 0)
         (T, thresh) = cv2.threshold(img_gray, thresh_value, 255, cv2.THRESH_BINARY)
 
-        mask = np.where(thresh)
+        mask_data = np.nonzero(thresh)
 
-        x, y = mask
+        x, y = mask_data
         x = x.tolist()
         y = y.tolist()
         marks = [(x, y) for (x, y) in zip(x, y)]
@@ -34,8 +36,9 @@ def count_white_pix(sample_images=None, thresh_value=None):
             image_copy[i] = (0, 0, 255)
 
         images_counted_marked.append((image_copy, ID_tag))
+        masks.append((mask_data, ID_tag, (h,w)))
 
-    return images_counted_marked, pixel_counts
+    return images_counted_marked, pixel_counts, masks
 
 if __name__ == "__main__":
 
@@ -57,7 +60,7 @@ if __name__ == "__main__":
     #     return GSD
 
     # Details.
-    planting = 'p7'
+    planting = 'p6'
     what = 'aoms'
 
     # Define path to extracted samples.
@@ -92,7 +95,7 @@ if __name__ == "__main__":
         "thresh_value": 225,
     }
 
-    images_counted_and_marked, pixel_counts = count_white_pix(**params)
+    images_counted_and_marked, pixel_counts, yield_masks = count_white_pix(**params)
 
     # Generate CSV data.
     df = pd.DataFrame(pixel_counts)
@@ -141,3 +144,16 @@ if __name__ == "__main__":
     # Write marked sample images for inspection.
     for (image,image_name) in images_counted_and_marked:
         cv2.imwrite(os.path.join(directory_path, '{0}-marked.png'.format(image_name)), image)
+
+    # Make directory for pixel location data.
+    yield_pixel_location_csv_dir = os.path.join(an_output_dir, "{0}-white-pixel-locations".format(planting))
+    if not os.path.exists(yield_pixel_location_csv_dir):
+        os.makedirs(yield_pixel_location_csv_dir)
+
+    # Write pixel locations of measured seed-cotton.
+    for ((y, x), ID_tag, (h,w)) in yield_masks:
+
+        # Virtual sample space (image) height and width is recorded in df.
+        df = pd.DataFrame({'x':x,'y':y,'h':h,'w':w})
+        df.to_csv(os.path.join(yield_pixel_location_csv_dir, ID_tag.split('.')[0] + '.csv'))
+
