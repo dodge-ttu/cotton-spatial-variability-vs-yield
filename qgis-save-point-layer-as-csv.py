@@ -7,7 +7,7 @@ from qgis.core import QgsVectorFileWriter
 from qgis.core import QgsCoordinateReferenceSystem
 
 # Change layer CRS for a list of layers:
-def change_projections(layer_list=None, output_dir=None):
+def save_csv(layer_list=None, output_dir=None, crs=None):
 
     for layer in layer_list:
 
@@ -15,7 +15,7 @@ def change_projections(layer_list=None, output_dir=None):
             'layer': layer,
             'fileName': os.path.join(output_dir, "{0}_process".format(layer.name())),
             'fileEncoding': "utf-8",
-            'destCRS': QgsCoordinateReferenceSystem('EPSG:3670'),
+            'destCRS': QgsCoordinateReferenceSystem(crs),
             'driverName': 'CSV',
             'layerOptions': ['GEOMETRY=AS_XY',
                              'CREATE_CSVT=NO',
@@ -29,8 +29,9 @@ def change_projections(layer_list=None, output_dir=None):
 if __name__ == '__main__':
 
     # Details.
-    planting = 'p6'
+    plantings = ['p6', 'p7']
     what = 'points'
+    crs = 'EPSG:3670'
 
     # Append QGIS to path.
     sys.path.append("/home/will/cotton spatial variability vs yield analysis/"
@@ -59,27 +60,33 @@ if __name__ == '__main__':
     # Get map layers.
     map_layers = project.mapLayers()
 
-    point_layers = [v for k, v in map_layers.items() if planting in k and what in k]
+    # Process for given plantings.
+    for planting in plantings:
 
-    # Create a sub-directory.
-    directory_path = os.path.join(output_dir, "{0}-{1}-csv-data".format(planting, what))
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
+        point_layers = [v for k, v in map_layers.items() if planting in k and what in k]
 
-    # Run function.
-    params = {'output_dir': directory_path,
-              'layer_list': point_layers}
+        # Create a sub-directory.
+        directory_path = os.path.join(output_dir, "{0}-{1}-csv-data".format(planting, what))
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path)
 
-    change_projections(**params)
+        # Run function.
+        params = {
+            'output_dir': directory_path,
+            'layer_list': point_layers,
+            'crs': crs,
+        }
 
-    # Write a meta-data file with the details of this extraction for future reference.
-    with open(os.path.join(directory_path, "sample_meta_data.txt"), "w") as tester:
-        tester.write("""planting: {0}\n
-                        what was extracted: {1}\n
-                        Samples Generated On: {2}\n
-                        """.format(planting, what, formatted_time))
+        save_csv(**params)
 
-    tester.close()
+        # Write a meta-data file with the details of this extraction for future reference.
+        with open(os.path.join(directory_path, "sample_meta_data.txt"), "w") as tester:
+            tester.write("""planting: {0}\n
+                            what was extracted: {1}\n
+                            Samples Generated On: {2}\n
+                            """.format(planting, what, formatted_time))
+
+        tester.close()
 
     # Close project.
     qgs.exitQgis()

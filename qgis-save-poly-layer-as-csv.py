@@ -11,7 +11,7 @@ from qgis.core import QgsVectorFileWriter
 from qgis.core import QgsCoordinateReferenceSystem
 
 # Change layer CRS for a list of layers:
-def change_projections(layer_list=None, output_dir=None, crs=None):
+def save_csv(layer_list=None, output_dir=None, crs=None):
 
     for layer in layer_list:
 
@@ -21,11 +21,12 @@ def change_projections(layer_list=None, output_dir=None, crs=None):
             'fileEncoding': "utf-8",
             'destCRS': QgsCoordinateReferenceSystem(crs),
             'driverName': 'CSV',
-            'layerOptions': ['GEOMETRY=AS_WKT',
-                             'CREATE_CSVT=NO',
-                             'SEPARATOR=COMMA',
-                             'WRITE_BOM=NO',
-                             ],
+            'layerOptions': [
+                'GEOMETRY=AS_WKT',
+                'CREATE_CSVT=NO',
+                'SEPARATOR=COMMA',
+                'WRITE_BOM=NO',
+            ],
         }
 
         QgsVectorFileWriter.writeAsVectorFormat(**parameters)
@@ -33,17 +34,13 @@ def change_projections(layer_list=None, output_dir=None, crs=None):
 if __name__ == '__main__':
 
     # Details.
-    planting = 'p6'
+    plantings = ['p6', 'p7']
     what = 'aoms'
     crs = 'EPSG:3670'
 
     # Append QGIS to path.
     sys.path.append("/home/will/cotton spatial variability vs yield analysis/"
                     "cott_spat_interp/lib/python3/dist-packages")
-
-    # Get date to tag output.
-    raw_time = datetime.now()
-    formatted_time = datetime.strftime(raw_time, "%Y-%m-%d %H:%M:%S")
 
     # Define path to output directory.
     output_dir = "/home/will/cotton spatial variability vs yield analysis/" \
@@ -64,59 +61,75 @@ if __name__ == '__main__':
     # Get map layers.
     map_layers = project.mapLayers()
 
-    # Filter for desired aoms.
-    aom_layers = []
-    for (k,v) in map_layers.items():
-        if re.findall(r'spatial_{0}_aom_(..)'.format(planting), k) and 'points' not in k:
-            aom_layers.append(v)
+    # Process for given plantings.
+    for planting in plantings:
 
-    # Create a sub-directory.
-    directory_path = os.path.join(output_dir, "{0}-{1}-csv-data".format(planting, what))
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
+        # Get date to tag output.
+        raw_time = datetime.now()
+        formatted_time = datetime.strftime(raw_time, "%Y-%m-%d %H:%M:%S")
 
-    # Run function.
-    params = {'output_dir': directory_path,
-              'layer_list': aom_layers,
-              'crs': crs,
-              }
+        # Filter for desired aoms.
+        aom_layers = []
+        for (k, v) in map_layers.items():
+            if re.findall(r'spatial_{0}_aom_(..)'.format(planting), k) and 'points' not in k:
+                aom_layers.append(v)
 
-    change_projections(**params)
+        # Create a sub-directory.
+        directory_path = os.path.join(output_dir, "{0}-{1}-csv-data".format(planting, what))
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path)
 
-    # Re write csv files to clean them up and organize the vertices.
-    csv_files = os.listdir(directory_path)
-    csv_files = [i for i in csv_files if i.endswith('.csv')]
+        # Run function.
+        params = {
+            'output_dir': directory_path,
+            'layer_list': aom_layers,
+            'crs': crs,
+        }
 
-    data_frames = []
+        save_csv(**params)
 
-    for filename in csv_files:
-        path = os.path.join(directory_path, filename)
-        with open(path, 'r+') as my_file:
-            data = my_file.readlines()
+        # Re write csv files to clean them up and organize the vertices.
+        csv_files = os.listdir(directory_path)
+        csv_files = [i for i in csv_files if i.endswith('.csv')]
 
-            # Here there is only one polygon per layer so only need the line after the header.
-            data = data[1]
+        data_frames = []
 
-            # Great numeric re pattern from Stack Overflow.
-            # Needed becuase the original polygon geometry is saved in WKT format that is not pandas-friendly.
-            # The vertices are basically saved a giant oddly formatted tuple with a bunch of cruft.
-            numeric_const_pattern = '[-+]? (?: (?: \d* \. \d+ ) | (?: \d+ \.? ) )(?: [Ee] [+-]? \d+ ) ?'
-            rx = re.compile(numeric_const_pattern, re.VERBOSE)
+        for filename in csv_files:
+            path = os.path.join(directory_path, filename)
+            with open(path, 'r+') as my_file:
+                data = my_file.readlines()
 
-            vertices = rx.findall(data)
+                # In this case there is only one polygon per layer, so we only need the line after the header.
+                data = data[1]
 
-            print(vertices)
+                # Great numeric re pattern from Stack Overflow.
+                # Needed because the original polygon geometry is saved in WKT format that is not pandas-friendly.
+                # The vertices are basically saved as a giant oddly formatted tuple with a bunch of parenthetic cruft.
+                numeric_const_pattern = '[-+]? (?: (?: \d* \. \d+ ) | (?: \d+ \.? ) )(?: [Ee] [+-]? \d+ ) ?'
+                rx = re.compile(numeric_const_pattern, re.VERBOSE)
 
+                vertices = rx.findall(data)
 
+                # The data from the High Plains of Texas will always be (7XXXXXX.XXXXXX, 9XXXXXX.XXXXXX)
+                area = vertices[-1]
+                y = [i for i in vertices if i.startswith('9') and len(i) > 10]
+                x = [i for i in vertices if i.startswith('7') and len(i) > 10]
 
-    # Write a meta-data file with the details of this extraction for future reference.
-    with open(os.path.join(directory_path, "sample_meta_data.txt"), "w") as tester:
-        tester.write("""planting: {0}\n
-                        CRS: {1}\n
-                        Samples Generated On: {2}\n
-                        """.format(planting, crs, formatted_time))
+                y = [float(i) for i in y]
+                x = [float(i) for i in x]
 
-    tester.close()
+                # Covert to df and write the data back to a csv now that it's in a common format.
+                df = pd.DataFrame({'X':x, 'Y':y})
+                df.to_csv(path)
+
+        # Write a meta-data file with the details of this extraction for future reference.
+        with open(os.path.join(directory_path, "sample_meta_data.txt"), "w") as tester:
+            tester.write("""planting: {0}\n
+                            CRS: {1}\n
+                            Samples Generated On: {2}\n
+                            """.format(planting, crs, formatted_time))
+
+        tester.close()
 
     # Close project.
     qgs.exitQgis()

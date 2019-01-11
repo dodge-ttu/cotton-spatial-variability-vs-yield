@@ -60,100 +60,103 @@ if __name__ == "__main__":
     #     return GSD
 
     # Details.
-    planting = 'p6'
+    plantings = ['p6', 'p7']
     what = 'aoms'
 
-    # Define path to extracted samples.
-    input_dir = '/home/will/cotton spatial variability vs yield analysis/' \
-                '2018-p7-p6-analysis/{0}-yield-aoms-extracted'.format(planting)
-
-    # Get extracted sample file names.
-    files_in_dir = [i for i in os.listdir(input_dir) if i.endswith(".tif")]
-
-    # Create a list of aom images.
-    some_sample_images = []
-    for image_name in files_in_dir:
-        a_path = os.path.join(input_dir, image_name)
-        an_image = cv2.imread(a_path)
-        some_sample_images.append((an_image, image_name))
-
     # Define path to output directory.
-    an_output_dir = "/home/will/cotton spatial variability vs yield analysis/" \
+    output_dir = "/home/will/cotton spatial variability vs yield analysis/" \
                     "2018-p7-p6-analysis/"
 
     # Provide an ID for the analysis.
     analysis_id = "2018-11-15_65_75_35_rainMatrix_modified"
 
-    # Create an out sub-directory.
-    directory_path = os.path.join(an_output_dir, "{0}-{1}-yield-estimates".format(planting, what))
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
+    # Process desired plantings.
+    for planting in plantings:
 
-    # Count pixels.
-    params = {
-        "sample_images": some_sample_images,
-        "thresh_value": 225,
-    }
+        # Define path to read in extracted samples.
+        input_dir = '/home/will/cotton spatial variability vs yield analysis/' \
+                    '2018-p7-p6-analysis/{0}-yield-aoms-extracted'.format(planting)
 
-    images_counted_and_marked, pixel_counts, yield_masks = count_white_pix(**params)
+        # Get extracted sample file names.
+        files_in_dir = [i for i in os.listdir(input_dir) if i.endswith(".tif")]
 
-    # Generate CSV data.
-    df = pd.DataFrame(pixel_counts)
-    df.columns = ["pix_counts", "ID_tag"]
+        # Create a list of aom images.
+        some_sample_images = []
+        for image_name in files_in_dir:
+            a_path = os.path.join(input_dir, image_name)
+            an_image = cv2.imread(a_path)
+            some_sample_images.append((an_image, image_name))
 
-    # GSD value should be retrieved from the metadata file associated with a given composite.
-    # GSD for "2018-11-15_65_75_35_rainMatrix_modified" processing run: 90.9090909091 pix/meter
-    # GSD for "2018-11-15_65_75_35_rainMatrix_modified" processing run: 1.1000011 cm/pix
-    GSD = 1.1
+        # Create an out sub-directory.
+        directory_path = os.path.join(output_dir, "{0}-{1}-yield-estimates".format(planting, what))
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path)
 
-    # Calculate 2D yield area.
-    df.loc[:, "2D_yield_area"] = df.loc[:, "pix_counts"] * 1.1
+        # Count pixels.
+        params = {
+            "sample_images": some_sample_images,
+            "thresh_value": 225,
+        }
 
-    # Get per AOM area, manually exported from QGIS at the moment.
-    virtual_sample_spaces_in_meters = '/home/will/cotton spatial variability vs yield analysis/' \
-                                      '2018-p6-p7-data/' \
-                                      'virtual_aom_areas-{0}.csv'.format(planting)
+        images_counted_and_marked, pixel_counts, yield_masks = count_white_pix(**params)
 
-    # Get area data for each virtual region of interest.
-    df_area = pd.read_csv(virtual_sample_spaces_in_meters)
+        # Generate CSV data.
+        df = pd.DataFrame(pixel_counts)
+        df.columns = ["pix_counts", "ID_tag"]
 
-    # Generate an ID for the join column from the filename written as: spatial_p6_aom_15.tif
-    df_area.loc[:, 'ID_tag'] = ['spatial_{0}_aom_{1}.tif'.format(planting, str(x).zfill(2)) for x in df_area.loc[:, 'aom_id'].values]
+        # GSD value should be retrieved from the metadata file associated with a given composite.
+        # GSD for "2018-11-15_65_75_35_rainMatrix_modified" processing run: 90.9090909091 pix/meter
+        # GSD for "2018-11-15_65_75_35_rainMatrix_modified" processing run: 1.1000011 cm/pix
+        GSD = 1.1
 
-    # Merge data.
-    df_both = df.merge(df_area, left_on='ID_tag', right_on='ID_tag', how='outer')
+        # Calculate 2D yield area.
+        df.loc[:, "2D_yield_area"] = df.loc[:, "pix_counts"] * 1.1
 
-    # Yield model y = 0.658 * x - 35.691 based on current findings
-    df_both.loc[:, 'est_yield'] = df_both.loc[:, '2D_yield_area'] * 0.658
+        # Get per AOM area, manually exported from QGIS at the moment.
+        virtual_sample_spaces_in_meters = '/home/will/cotton spatial variability vs yield analysis/' \
+                                          '2018-p6-p7-data/' \
+                                          'virtual_aom_areas-{0}.csv'.format(planting)
 
-    # Per square meter yield,
-    df_both.loc[:, 'g_per_sq_meter_yield'] = df_both.loc[:, 'est_yield'] / df_both.loc[:, 'area']
+        # Get area data for each virtual region of interest.
+        df_area = pd.read_csv(virtual_sample_spaces_in_meters)
 
-    # Sort values.
-    df_both.sort_values(by=['g_per_sq_meter_yield'], inplace=True)
+        # Generate an ID for the join column from the filename written as: spatial_p6_aom_15.tif
+        df_area.loc[:, 'ID_tag'] = ['spatial_{0}_aom_{1}.tif'.format(planting, str(x).zfill(2)) for x in df_area.loc[:, 'aom_id'].values]
 
-    # 1 gram per meter is 8.92179 pounds per acre.
-    df_both.loc[:, 'lb_per_ac_yield'] = df_both.loc[:, 'g_per_sq_meter_yield'] * 8.92179
+        # Merge data.
+        df_both = df.merge(df_area, left_on='ID_tag', right_on='ID_tag', how='outer')
 
-    # Lint Yield, turnout.
-    df_both.loc[:, 'turnout_lb_per_ac_yield'] = df_both.loc[:, 'lb_per_ac_yield'] * .38
+        # Yield model y = 0.658 * x - 35.691 based on current findings
+        df_both.loc[:, 'est_yield'] = df_both.loc[:, '2D_yield_area'] * 0.658
 
-    # Write pix count data.
-    df_both.to_csv(os.path.join(directory_path, "pix-counts-for-{0}.csv".format(analysis_id)))
+        # Per square meter yield,
+        df_both.loc[:, 'g_per_sq_meter_yield'] = df_both.loc[:, 'est_yield'] / df_both.loc[:, 'area']
 
-    # Write marked sample images for inspection.
-    for (image,image_name) in images_counted_and_marked:
-        cv2.imwrite(os.path.join(directory_path, '{0}-marked.png'.format(image_name)), image)
+        # Sort values.
+        df_both.sort_values(by=['g_per_sq_meter_yield'], inplace=True)
 
-    # Make directory for pixel location data.
-    yield_pixel_location_csv_dir = os.path.join(an_output_dir, "{0}-white-pixel-locations".format(planting))
-    if not os.path.exists(yield_pixel_location_csv_dir):
-        os.makedirs(yield_pixel_location_csv_dir)
+        # 1 gram per meter is 8.92179 pounds per acre.
+        df_both.loc[:, 'lb_per_ac_yield'] = df_both.loc[:, 'g_per_sq_meter_yield'] * 8.92179
 
-    # Write pixel locations of measured seed-cotton.
-    for ((y, x), ID_tag, (h,w)) in yield_masks:
+        # Lint Yield, turnout.
+        df_both.loc[:, 'turnout_lb_per_ac_yield'] = df_both.loc[:, 'lb_per_ac_yield'] * .38
 
-        # Virtual sample space (image) height and width is recorded in df.
-        df = pd.DataFrame({'x':x,'y':y,'h':h,'w':w})
-        df.to_csv(os.path.join(yield_pixel_location_csv_dir, ID_tag.split('.')[0] + '.csv'))
+        # Write pix count data.
+        df_both.to_csv(os.path.join(directory_path, "pix-counts-for-{0}.csv".format(analysis_id)))
+
+        # Write marked sample images for inspection.
+        for (image,image_name) in images_counted_and_marked:
+            cv2.imwrite(os.path.join(directory_path, '{0}-marked.png'.format(image_name)), image)
+
+        # Make directory for pixel location data.
+        yield_pixel_location_csv_dir = os.path.join(output_dir, "{0}-white-pixel-locations".format(planting))
+        if not os.path.exists(yield_pixel_location_csv_dir):
+            os.makedirs(yield_pixel_location_csv_dir)
+
+        # Write pixel locations of measured seed-cotton.
+        for ((y, x), ID_tag, (h,w)) in yield_masks:
+
+            # Virtual sample space (image) height and width is recorded in df.
+            df = pd.DataFrame({'x':x,'y':y,'h':h,'w':w})
+            df.to_csv(os.path.join(yield_pixel_location_csv_dir, ID_tag.split('.')[0] + '.csv'))
 
