@@ -315,7 +315,7 @@ yield_est_data = pd.read_csv(yield_est_data)
 data = yield_est_data.loc[:, 'turnout_lb_per_ac_yield']
 labels = [int(re.findall(r'\d+', i)[1]) for i in yield_est_data.loc[:, 'ID_tag']]
 
-# Plot UAV measured yield values for each AOM.
+# Plot UAV measured yield values for a Planting.
 fig, ax = plt.subplots(1,1, figsize=(12,12))
 ax.bar(range(1,17), data, width=0.8, align='center', edgecolor='k', tick_label=labels)
 ax.set_xlabel('Virtual Sample ID', fontdict={'fontsize':16})
@@ -421,8 +421,6 @@ for (ax, (cott_df, cott_aom_number), (df, aom_number)) in zip(axs.ravel(), cott_
 
     anchored_text = AnchoredText(aom_number, loc='upper right', prop={'size': 10})
     ax.add_artist(anchored_text)
-
-    #
 
 fig.suptitle('DBSCAN Clusters over UAV Yield Planting {0}'.format(planting[1]), fontsize=16, fontweight='bold')
 fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
