@@ -12,7 +12,7 @@ from qgis.core import QgsVectorFileWriter
 from qgis.core import QgsCoordinateReferenceSystem
 
 
-# Change layer CRS for a list of layers:
+# Save shapefile layers. Can change CRS:
 def save_shapefiles(layer_list=None, output_dir=None, crs=None):
 
     for layer in layer_list:

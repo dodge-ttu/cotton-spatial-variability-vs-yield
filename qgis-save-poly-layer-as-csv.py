@@ -10,7 +10,7 @@ from qgis.core import QgsApplication
 from qgis.core import QgsVectorFileWriter
 from qgis.core import QgsCoordinateReferenceSystem
 
-# Change layer CRS for a list of layers:
+# Save CSV layers. Can change CRS:
 def save_csv(layer_list=None, output_dir=None, crs=None):
 
     for layer in layer_list:
