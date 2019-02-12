@@ -12,7 +12,7 @@ from sklearn.cluster import DBSCAN
 
 
 # Details.
-planting = 'p6'
+planting = 'p7'
 
 # Define input directory.
 input_directory = '/home/will/cotton spatial variability vs yield analysis/' \

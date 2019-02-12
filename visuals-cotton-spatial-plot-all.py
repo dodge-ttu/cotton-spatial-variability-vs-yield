@@ -50,7 +50,7 @@ def get_poly_hat(x_values, y_values, poly_degree):
     return (coeffs, poly_eqn, r_square)
 
 # Details.
-planting = 'p6'
+planting = 'p7'
 
 # Define input directory.
 input_directory = '/home/will/cotton spatial variability vs yield analysis/' \
@@ -367,7 +367,7 @@ fig, axs = plt.subplots(4, 4, figsize=(12, 12))
 
 # Get extracted aom extents to scale image data to GPS seedling point data.
 extent_data_path = '/home/will/cotton spatial variability vs yield analysis/' \
-                   '2018-p7-p6-analysis/p6-extent-csv-data/' \
+                   '2018-p7-p6-analysis/{0}-extent-csv-data/' \
                    '{0}-extent-all-aoms.csv'.format(planting)
 
 df_extents = pd.read_csv(extent_data_path)
@@ -427,10 +427,6 @@ fig.tight_layout(pad=2.0, w_pad=1.0, h_pad=0.0)
 plt.subplots_adjust(top=0.94)
 plt.savefig(os.path.join(visuals_directory, 'dbscan-uav-measured-yield-multiples.png'))
 plt.close()
-
-
-
-
 
 #region Silhouette analysis
 #

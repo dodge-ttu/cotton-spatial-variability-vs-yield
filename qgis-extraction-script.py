@@ -48,17 +48,17 @@ if __name__ == '__main__':
     # input_layer = "2018-11-15_65_75_35_rainMatrix_modified"  # yield
     input_layer = "2018-06-21_75_75_20_rainMatrix_odm_orthophoto_modified" # seedling
 
+    # # Define path to output directory.
+    # an_output_dir = "/home/will/cotton spatial variability vs yield analysis/" \
+    #     "/2018-p7-p6-analysis/"
+    #
+    # # Define input layer.
+    # input_layer = "2018-11-15_65_75_35_rainMatrix_modified" # yield
+    # # input_layer = "2018-06-21_75_75_20_rainMatrix_odm_orthophoto_modified" # seedling
+
     # Get date to tag output.
     raw_time = datetime.now()
     formatted_time = datetime.strftime(raw_time, "%Y-%m-%d %H:%M:%S")
-
-    # Define path to output directory.
-    an_output_dir = "/home/will/cotton spatial variability vs yield analysis/" \
-        "/2018-p7-p6-analysis/"
-
-    # Define input layer.
-    input_layer = "2018-11-15_65_75_35_rainMatrix_modified" # yield
-    # input_layer = "2018-06-21_75_75_20_rainMatrix_odm_orthophoto_modified" # seedling
 
     # Create a reference to the QGIS application.
     qgs = QgsApplication([], False)
