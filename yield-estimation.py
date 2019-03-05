@@ -107,10 +107,10 @@ if __name__ == "__main__":
         # GSD value should be retrieved from the metadata file associated with a given composite.
         # GSD for "2018-11-15_65_75_35_rainMatrix_modified" processing run: 90.9090909091 pix/meter
         # GSD for "2018-11-15_65_75_35_rainMatrix_modified" processing run: 1.1000011 cm/pix
-        GSD = 1.1
+        GSD = 1.1 # pixels / cm
 
         # Calculate 2D yield area.
-        df.loc[:, "2D_yield_area"] = df.loc[:, "pix_counts"] * 1.1
+        df.loc[:, "PCCA"] = df.loc[:, "pix_counts"] * 1.1 # pixels / cm
 
         # Get per AOM area, manually exported from QGIS at the moment.
         virtual_sample_spaces_in_meters = '/home/will/cotton spatial variability vs yield analysis/' \
@@ -126,11 +126,15 @@ if __name__ == "__main__":
         # Merge data.
         df_both = df.merge(df_area, left_on='ID_tag', right_on='ID_tag', how='outer')
 
-        # Yield model y = 0.658 * x - 35.691 based on current findings
-        df_both.loc[:, 'est_yield'] = df_both.loc[:, '2D_yield_area'] * 0.658
+        # Yield model y = 2.28 * x for a 35 meter flight based on current findings.
+        # slope = 5.885 - .1348 * (altitude) + 9.077*(10**-4) * (altitude**2)
+        # PCCA = pixels * GSD
+        # seeded_cotton_weight = slope * PCCA
 
-        # Per square meter yield,
-        df_both.loc[:, 'g_per_sq_meter_yield'] = df_both.loc[:, 'est_yield'] / df_both.loc[:, 'area']
+        df_both.loc[:, 'pred_yield_grams_per_cm2'] = df_both.loc[:, 'PCCA'] * 2.28
+
+        # Per square meter yield.
+        df_both.loc[:, 'pred_yield_grams_per_m2'] = df_both.loc[:, 'pred_yield_grams_per_cm2'] / df_both.loc[:, 'area']
 
         # Sort values.
         df_both.sort_values(by=['g_per_sq_meter_yield'], inplace=True)
